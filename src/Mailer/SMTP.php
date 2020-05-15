@@ -382,7 +382,9 @@ class SMTP
             $this->message->getCc(),
             $this->message->getBcc()
         );
-        foreach ($to as $toEmail=>$_) {
+        foreach (array_keys($to) as $toEmail) {
+            if (empty($toEmail)) continue;
+
             $in = "RCPT TO:<" . $toEmail . ">" . $this->CRLF;
             print_r($in); //debug
             $code = $this->pushStack($in);
