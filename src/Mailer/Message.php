@@ -98,6 +98,12 @@ class Message
 
 
     /**
+     * $this->rawMail
+     * @var string
+     */
+    protected $rawMail = '';
+
+    /**
      * Address for the reply-to header
      * @var string
      */
@@ -216,6 +222,18 @@ class Message
     }
 
     /**
+     * use a raw eml as message
+     *
+     * @param $raw
+     * @return $this
+     */
+    public function setRawMail($raw)
+    {
+        $this->rawMail = $raw;
+        return $this;
+    }
+
+    /**
      * @return string
      */
     public function getFromName()
@@ -228,7 +246,16 @@ class Message
      */
     public function getFromEmail()
     {
-        return $this->fromEmail;
+        $result = $this->fromEmail;
+
+        if (!empty($this->rawMail)) {
+            $header = $this->getRawHeaderLine('from');
+            if (preg_match('/([^< ]+@[^> ])/', $header, $matches) == 1) {
+                $result = $matches[1];
+            }
+        }
+
+        return $result;
     }
 
 
@@ -253,7 +280,53 @@ class Message
      */
     public function getTo()
     {
-        return $this->to;
+        $result = $this->to;
+        if (!empty($this->rawMail)) {
+            $result = $this->getRawAddresses('to');
+        }
+        return $result;
+    }
+
+    private function getRawHeaderLine($type)
+    {
+        $result = '';
+
+        if (empty($this->rawMail)) return $result;
+
+        $rawMailArray = explode(PHP_EOL, $this->rawMail);
+        foreach ($rawMailArray as $mailLine ) {
+            // only parse the header
+            if (empty($mailLine)) break;
+
+            $header = substr($mailLine, 0, strpos($mailLine, ':'));
+            if (strtolower($header) == strtolower($type)) {
+                $result = $mailLine;
+                break;
+            }
+        }
+
+        return $result;
+    }
+
+    private function getRawAddresses($type)
+    {
+        $addressesArray = [];
+
+        $headerLine = $this->getRawHeaderLine($type);
+        $addresses = explode(
+            ',', trim(substring($headerLine, strpos($headerLine, ':') + 1))
+        );
+
+        foreach ($addresses as $address)
+        {
+            if (preg_match("/^(.+)\s+<(.+)>$/", $address, $matches) == 1) {
+                $addressesArray[$matches[2]] = $matches[1];
+            } else {
+                $addressesArray[$address] = $address;
+            }
+        }
+
+        return $addressesArray;
     }
 
     /**
@@ -261,7 +334,11 @@ class Message
      */
     public function getCc()
     {
-        return $this->cc;
+        $result = $this->cc;
+        if (!empty($this->rawMail)) {
+            $result = $this->getRawAddresses('cc');
+        }
+        return $result;
     }
 
     /**
@@ -269,7 +346,11 @@ class Message
      */
     public function getBcc()
     {
-        return $this->bcc;
+        $result = $this->bcc;
+        if (!empty($this->rawMail)) {
+            $result = $this->getRawAddresses('bcc');
+        }
+        return $result;
     }
 
     /**
