@@ -520,6 +520,9 @@ class Message
 
     public function toString()
     {
+        // do we have a raw email, return that
+        if (!empty($this->rawMail)) return $this->rawMail;
+
         $in = '';
         $this->createHeader();
         foreach ($this->header as $key => $value) {
