@@ -457,6 +457,8 @@ class SMTP
             if(substr($str,3,1) == " ") {
                 $code = substr($str,0,3);
                 return $code;
+            } else {
+                print_r($str);
             }
         }
         throw new SMTPException("SMTP Server did not respond with anything I recognized");
