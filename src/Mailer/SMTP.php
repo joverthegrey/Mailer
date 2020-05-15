@@ -384,6 +384,7 @@ class SMTP
         );
         foreach ($to as $toEmail=>$_) {
             $in = "RCPT TO:<" . $toEmail . ">" . $this->CRLF;
+            print_r($in); //debug
             $code = $this->pushStack($in);
             if ($code !== '250') {
                 throw new CodeException('250', $code, array_pop($this->resultStack));
