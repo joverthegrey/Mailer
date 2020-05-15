@@ -115,6 +115,18 @@ class Mailer
     }
 
     /**
+     * Set the raw mail
+     *
+     * @param $raw
+     * @return $this
+     */
+    public function setRawMail($raw)
+    {
+        $this->message->setRawMail($raw);
+        return $this;
+    }
+
+    /**
      * add mail receiver
      * @param string $name
      * @param string $email
