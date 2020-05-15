@@ -314,7 +314,7 @@ class Message
 
         $headerLine = $this->getRawHeaderLine($type);
         $addresses = explode(
-            ',', trim(substring($headerLine, strpos($headerLine, ':') + 1))
+            ',', trim(substr($headerLine, strpos($headerLine, ':') + 1))
         );
 
         foreach ($addresses as $address)
