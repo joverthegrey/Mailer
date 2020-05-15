@@ -386,7 +386,6 @@ class SMTP
             if (empty($toEmail)) continue;
 
             $in = "RCPT TO:<" . $toEmail . ">" . $this->CRLF;
-            print_r($in); //debug
             $code = $this->pushStack($in);
             if ($code !== '250') {
                 throw new CodeException('250', $code, array_pop($this->resultStack));
@@ -457,8 +456,6 @@ class SMTP
             if(substr($str,3,1) == " ") {
                 $code = substr($str,0,3);
                 return $code;
-            } else {
-                print_r($str);
             }
         }
         throw new SMTPException("SMTP Server did not respond with anything I recognized");

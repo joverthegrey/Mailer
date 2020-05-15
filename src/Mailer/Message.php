@@ -521,7 +521,7 @@ class Message
     public function toString()
     {
         // do we have a raw email, return that
-        if (!empty($this->rawMail)) return $this->rawMail;
+        if (!empty($this->rawMail)) return $this->rawMail . $this->CRLF . $this->CRLF . "." . $this->CRLF;
 
         $in = '';
         $this->createHeader();
