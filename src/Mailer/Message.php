@@ -250,7 +250,7 @@ class Message
 
         if (!empty($this->rawMail)) {
             $header = $this->getRawHeaderLine('from');
-            if (preg_match('/([^< ]+@[^> ])/', $header, $matches) == 1) {
+            if (preg_match('/([^< ]+@[^> ]+)/', $header, $matches) == 1) {
                 $result = $matches[1];
             }
         }
