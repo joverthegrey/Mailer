@@ -322,7 +322,7 @@ class Message
             if (preg_match("/^(.+)\s+<(.+)>$/", $address, $matches) == 1) {
                 $addressesArray[$matches[2]] = $matches[1];
             } else {
-                $addressesArray[$address] = $address;
+                $addressesArray[$address] = null;
             }
         }
 
