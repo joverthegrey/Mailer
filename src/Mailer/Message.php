@@ -248,7 +248,7 @@ class Message
     {
         $result = $this->fromEmail;
 
-        if (!empty($this->rawMail)) {
+        if (empty($result) && !empty($this->rawMail)) {
             $header = $this->getRawHeaderLine('from');
             if (preg_match('/([^< ]+@[^> ]+)/', $header, $matches) == 1) {
                 $result = $matches[1];
@@ -281,12 +281,18 @@ class Message
     public function getTo()
     {
         $result = $this->to;
-        if (!empty($this->rawMail)) {
+        if (empty($result) && !empty($this->rawMail)) {
             $result = $this->getRawAddresses('to');
         }
         return $result;
     }
 
+    /**
+     * Returns the specified header line from the raw email
+     *
+     * @param $type
+     * @return mixed|string
+     */
     private function getRawHeaderLine($type)
     {
         $result = '';
@@ -308,7 +314,13 @@ class Message
         return $result;
     }
 
-    private function getRawAddresses($type)
+    /**
+     * Return the type addresses from the rawEmail
+     *
+     * @param $type
+     * @return array
+     */
+    public function getRawAddresses($type)
     {
         $addressesArray = [];
 
@@ -335,7 +347,7 @@ class Message
     public function getCc()
     {
         $result = $this->cc;
-        if (!empty($this->rawMail)) {
+        if (empty($result) && !empty($this->rawMail)) {
             $result = $this->getRawAddresses('cc');
         }
         return $result;
@@ -347,7 +359,7 @@ class Message
     public function getBcc()
     {
         $result = $this->bcc;
-        if (!empty($this->rawMail)) {
+        if (empty($result) && !empty($this->rawMail)) {
             $result = $this->getRawAddresses('bcc');
         }
         return $result;
