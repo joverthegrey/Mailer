@@ -411,15 +411,16 @@ class Message
             $mail = $this->rawMail;
 
             if ($this->rawMailUseCurrentDate) {
-                $now = date('r');
-                $updatedMail = preg_replace('/(^Date: ).+$/', '${1}' . $now, $this->rawMail);
+                $dateLine = 'Date: ' . date('r');
+                $updatedMail = preg_replace('/^Date: .+$/m', $dateLine, $mail);
 
-                if (is_null($updatedMail) || $mail === $this->rawMail) {
+                if (is_null($updatedMail) || $updatedMail === $this->rawMail) {
                     throw new \Exception('Something went wrong while updating the date');
                 } else {
                     $mail = $updatedMail;
                 }
             }
+
             return $mail . $this->CRLF . $this->CRLF . "." . $this->CRLF;
         }
 
