@@ -15,7 +15,8 @@
  *  Create Date 2012-07-25.
  *  Under the MIT license.
  *
- \***************************************************/
+ * \***************************************************/
+
 namespace Tx\Mailer;
 
 class Message
@@ -104,6 +105,12 @@ class Message
     protected $rawMail = '';
 
     /**
+     * Use the current date, when we send a raw mail.
+     * @var bool
+     */
+    protected $rawMailUseCurrentDate = false;
+
+    /**
      * Address for the reply-to header
      * @var string
      */
@@ -114,7 +121,6 @@ class Message
      * @var string
      */
     protected $replyToEmail;
-
 
     public function setReplyTo($name, $email)
     {
@@ -136,7 +142,6 @@ class Message
         $this->fromEmail = $email;
         return $this;
     }
-
 
     /**
      * set mail fake from
@@ -184,28 +189,6 @@ class Message
     public function addBcc($name, $email)
     {
         $this->bcc[$email] = $name;
-        return $this;
-    }
-
-    /**
-     * set mail subject
-     * @param string $subject
-     * @return $this
-     */
-    public function setSubject($subject)
-    {
-        $this->subject = $subject;
-        return $this;
-    }
-
-    /**
-     * set mail body
-     * @param string $body
-     * @return $this
-     */
-    public function setBody($body)
-    {
-        $this->body = $body;
         return $this;
     }
 
@@ -258,6 +241,44 @@ class Message
         return $result;
     }
 
+    /**
+     * Returns the specified header line from the raw email
+     *
+     * @param $type
+     * @return mixed|string
+     */
+    private function getRawHeaderLine($type)
+    {
+        $result = '';
+
+        if (empty($this->rawMail)) return $result;
+
+        $rawMailArray = explode(PHP_EOL, $this->rawMail);
+        foreach ($rawMailArray as $mailLine) {
+            // only parse the header
+            if (empty($mailLine)) break;
+
+            $header = substr($mailLine, 0, strpos($mailLine, ':'));
+            if (strtolower($header) == strtolower($type)) {
+                $result = $mailLine;
+                break;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Toggle the state of the rawMailUseCurrentDate
+     * and return its current state
+     *
+     * @return bool
+     */
+    public function toggleCurrentDateRawMail()
+    {
+        $this->rawMailUseCurrentDate = !$this->rawMailUseCurrentDate;
+        return $this->rawMailUseCurrentDate;
+    }
 
     /**
      * @return string
@@ -288,33 +309,6 @@ class Message
     }
 
     /**
-     * Returns the specified header line from the raw email
-     *
-     * @param $type
-     * @return mixed|string
-     */
-    private function getRawHeaderLine($type)
-    {
-        $result = '';
-
-        if (empty($this->rawMail)) return $result;
-
-        $rawMailArray = explode(PHP_EOL, $this->rawMail);
-        foreach ($rawMailArray as $mailLine ) {
-            // only parse the header
-            if (empty($mailLine)) break;
-
-            $header = substr($mailLine, 0, strpos($mailLine, ':'));
-            if (strtolower($header) == strtolower($type)) {
-                $result = $mailLine;
-                break;
-            }
-        }
-
-        return $result;
-    }
-
-    /**
      * Return the type addresses from the rawEmail
      *
      * @param $type
@@ -329,8 +323,7 @@ class Message
             ',', trim(substr($headerLine, strpos($headerLine, ':') + 1))
         );
 
-        foreach ($addresses as $address)
-        {
+        foreach ($addresses as $address) {
             if (preg_match("/^(.+)\s+<(.+)>$/", $address, $matches) == 1) {
                 $addressesArray[$matches[2]] = $matches[1];
             } else {
@@ -374,6 +367,17 @@ class Message
     }
 
     /**
+     * set mail subject
+     * @param string $subject
+     * @return $this
+     */
+    public function setSubject($subject)
+    {
+        $this->subject = $subject;
+        return $this;
+    }
+
+    /**
      * @return mixed
      */
     public function getBody()
@@ -382,11 +386,55 @@ class Message
     }
 
     /**
+     * set mail body
+     * @param string $body
+     * @return $this
+     */
+    public function setBody($body)
+    {
+        $this->body = $body;
+        return $this;
+    }
+
+    /**
      * @return array
      */
     public function getAttachment()
     {
         return $this->attachment;
+    }
+
+    public function toString()
+    {
+        // do we have a raw email, return that
+        if (!empty($this->rawMail)) {
+            $mail = $this->rawMail;
+
+            if ($this->rawMailUseCurrentDate) {
+                $now = date('r');
+                $updatedMail = preg_replace('/(^Date: ).+$/', '${1}' . $now, $this->rawMail);
+
+                if (is_null($updatedMail) || $mail === $this->rawMail) {
+                    throw new \Exception('Something went wrong while updating the date');
+                } else {
+                    $mail = $updatedMail;
+                }
+            }
+            return $mail . $this->CRLF . $this->CRLF . "." . $this->CRLF;
+        }
+
+        $in = '';
+        $this->createHeader();
+        foreach ($this->header as $key => $value) {
+            $in .= $key . ': ' . $value . $this->CRLF;
+        }
+        if (empty($this->attachment)) {
+            $in .= $this->createBody();
+        } else {
+            $in .= $this->createBodyWithAttachment();
+        }
+        $in .= $this->CRLF . $this->CRLF . "." . $this->CRLF;
+        return $in;
     }
 
     /**
@@ -399,21 +447,21 @@ class Message
 
         $fromName = "";
         $fromEmail = $this->fromEmail;
-        if(!empty($this->fromName)){
+        if (!empty($this->fromName)) {
             $fromName = sprintf("=?utf-8?B?%s?= ", base64_encode($this->fromName));
         }
-        if(!empty($this->fakeFromEmail)){
-            if(!empty($this->fakeFromName)){
+        if (!empty($this->fakeFromEmail)) {
+            if (!empty($this->fakeFromName)) {
                 $fromName = sprintf("=?utf-8?B?%s?= ", base64_encode($this->fakeFromName));
             }
             $fromEmail = $this->fakeFromEmail;
         }
         $this->header['Return-Path'] = $fromEmail;
-        $this->header['From'] = $fromName . "<" . $fromEmail .">";
+        $this->header['From'] = $fromName . "<" . $fromEmail . ">";
 
         $this->header['To'] = '';
         foreach ($this->to as $toEmail => $toName) {
-            if(!empty($toName)){
+            if (!empty($toName)) {
                 $toName = sprintf("=?utf-8?B?%s?= ", base64_encode($toName));
             }
             $this->header['To'] .= $toName . "<" . $toEmail . ">, ";
@@ -421,7 +469,7 @@ class Message
         $this->header['To'] = substr($this->header['To'], 0, -2);
         $this->header['Cc'] = '';
         foreach ($this->cc as $toEmail => $toName) {
-            if(!empty($toName)){
+            if (!empty($toName)) {
                 $toName = sprintf("=?utf-8?B?%s?= ", base64_encode($toName));
             }
             $this->header['Cc'] .= $toName . "<" . $toEmail . ">, ";
@@ -429,7 +477,7 @@ class Message
         $this->header['Cc'] = substr($this->header['Cc'], 0, -2);
         $this->header['Bcc'] = '';
         foreach ($this->bcc as $toEmail => $toName) {
-            if(!empty($toName)){
+            if (!empty($toName)) {
                 $toName = sprintf("=?utf-8?B?%s?= ", base64_encode($toName));
             }
             $this->header['Bcc'] .= $toName . "<" . $toEmail . ">, ";
@@ -437,16 +485,16 @@ class Message
         $this->header['Bcc'] = substr($this->header['Bcc'], 0, -2);
 
         $replyToName = "";
-        if(!empty($this->replyToEmail)){
-            if(!empty($this->replyToName)){
+        if (!empty($this->replyToEmail)) {
+            if (!empty($this->replyToName)) {
                 $replyToName = sprintf("=?utf-8?B?%s?= ", base64_encode($this->replyToName));
             }
             $this->header['Reply-To'] = $replyToName . "<" . $this->replyToEmail . ">";
         }
 
-        if(empty($this->subject)){
+        if (empty($this->subject)) {
             $subject = '';
-        }else{
+        } else {
             $subject = sprintf("=?utf-8?B?%s?= ", base64_encode($this->subject));
         }
         $this->header['Subject'] = $subject;
@@ -455,11 +503,11 @@ class Message
         $this->header['X-Priority'] = '3';
         $this->header['X-Mailer'] = 'Mailer (https://github.com/txthinking/Mailer)';
         $this->header['MIME-Version'] = '1.0';
-        if (!empty($this->attachment)){
-            $this->boundaryMixed = md5(md5(time().'TxMailer').uniqid());
+        if (!empty($this->attachment)) {
+            $this->boundaryMixed = md5(md5(time() . 'TxMailer') . uniqid());
             $this->header['Content-Type'] = "multipart/mixed; \r\n\tboundary=\"" . $this->boundaryMixed . "\"";
         }
-        $this->boundaryAlternative = md5(md5(time().'TXMailer').uniqid());
+        $this->boundaryAlternative = md5(md5(time() . 'TXMailer') . uniqid());
         return $this;
     }
 
@@ -480,7 +528,7 @@ class Message
         $in .= chunk_split(base64_encode($this->body)) . $this->CRLF;
         $in .= $this->CRLF;
         $in .= "--" . $this->boundaryAlternative . $this->CRLF;
-        $in .= "Content-Type: text/html; charset=\"" . $this->charset ."\"" . $this->CRLF;
+        $in .= "Content-Type: text/html; charset=\"" . $this->charset . "\"" . $this->CRLF;
         $in .= "Content-Transfer-Encoding: base64" . $this->CRLF;
         $in .= $this->CRLF;
         $in .= chunk_split(base64_encode($this->body)) . $this->CRLF;
@@ -509,16 +557,16 @@ class Message
         $in .= chunk_split(base64_encode($this->body)) . $this->CRLF;
         $in .= $this->CRLF;
         $in .= "--" . $this->boundaryAlternative . $this->CRLF;
-        $in .= "Content-Type: text/html; charset=\"" . $this->charset ."\"" . $this->CRLF;
+        $in .= "Content-Type: text/html; charset=\"" . $this->charset . "\"" . $this->CRLF;
         $in .= "Content-Transfer-Encoding: base64" . $this->CRLF;
         $in .= $this->CRLF;
         $in .= chunk_split(base64_encode($this->body)) . $this->CRLF;
         $in .= $this->CRLF;
         $in .= "--" . $this->boundaryAlternative . "--" . $this->CRLF;
-        foreach ($this->attachment as $name => $path){
+        foreach ($this->attachment as $name => $path) {
             $in .= $this->CRLF;
             $in .= '--' . $this->boundaryMixed . $this->CRLF;
-            $in .= "Content-Type: application/octet-stream; name=\"". $name ."\"" . $this->CRLF;
+            $in .= "Content-Type: application/octet-stream; name=\"" . $name . "\"" . $this->CRLF;
             $in .= "Content-Transfer-Encoding: base64" . $this->CRLF;
             $in .= "Content-Disposition: attachment; filename=\"" . $name . "\"" . $this->CRLF;
             $in .= $this->CRLF;
@@ -527,25 +575,6 @@ class Message
         $in .= $this->CRLF;
         $in .= $this->CRLF;
         $in .= '--' . $this->boundaryMixed . '--' . $this->CRLF;
-        return $in;
-    }
-
-    public function toString()
-    {
-        // do we have a raw email, return that
-        if (!empty($this->rawMail)) return $this->rawMail . $this->CRLF . $this->CRLF . "." . $this->CRLF;
-
-        $in = '';
-        $this->createHeader();
-        foreach ($this->header as $key => $value) {
-            $in .= $key . ': ' . $value . $this->CRLF;
-        }
-        if (empty($this->attachment)) {
-            $in .= $this->createBody();
-        } else {
-            $in .= $this->createBodyWithAttachment();
-        }
-        $in .= $this->CRLF . $this->CRLF . "." . $this->CRLF;
         return $in;
     }
 

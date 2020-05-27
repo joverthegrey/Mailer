@@ -127,6 +127,16 @@ class Mailer
     }
 
     /**
+     * Toggle the rawMailUseCurrentDate
+     *
+     * @return bool
+     */
+    public function toggleCurrentDateRawMail()
+    {
+        return $this->message->toggleCurrentDateRawMail();
+    }
+
+    /**
      * add mail receiver
      * @param string $name
      * @param string $email
